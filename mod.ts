@@ -1,4 +1,5 @@
 import { writeJson } from "https://deno.land/x/jsonfile/mod.ts";
+import { writeCSV } from "https://deno.land/x/csv/mod.ts";
 import { FakePeopleOptions } from "./src/core/models.ts";
 import { Document } from "./src/core/models.ts";
 import { Person } from "./src/core/models.ts";
@@ -98,11 +99,53 @@ export default class Fakep extends Generator {
   }
 
   /**
-   * Export data to a JSON file.
+   * Export data to JSON file.
    * @param path
    * @param document
    */
   public exportJSON(path: string, document: object) {
     writeJson(path, document, { spaces: 2 });
+  }
+
+  /**
+   * Export data to CSV file.
+   * @param path
+   * @param document
+   * @param sortable
+   */
+  public async exportCSV<M extends object>(
+    path: string,
+    document: Array<Required<M>>,
+    sortable?: boolean
+  ) {
+    if (document.length === 0) {
+      throw new Error("The document must not be empty");
+    }
+
+    let rows: Array<string[]> = [];
+
+    if (sortable === true)
+      document.forEach(
+        (e: any, i: number) =>
+          (document[i] = Object.keys(e)
+            .sort()
+            .reduce((acc: any, key: any) => {
+              acc[key] = e[key];
+              return acc;
+            }, {}))
+      );
+
+    document.forEach((element, index) => {
+      if (index === 0) rows.push(Object.keys(element));
+      rows.push(Object.values(element));
+    });
+
+    const file = await Deno.open(path, {
+      write: true,
+      create: true,
+      truncate: true,
+    });
+
+    await writeCSV(file, rows);
   }
 }
